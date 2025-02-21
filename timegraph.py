@@ -10,7 +10,12 @@ def generate_timesheet_report(timesheet_path: str, output_html: str = "summary.h
     df['Month'] = pd.Categorical(df['Month'], categories=month_order, ordered=True)
 
     grouped_data = df.groupby(['Month'])['Hours'].sum().reset_index()
-    project_hours = df.groupby('Project')['Hours'].sum().reset_index()
+    grouped_data = df.groupby("Month", as_index=False).agg({"Hours": "sum", "Available_Hours": "sum"})
+    
+    grouped_data["hours_label"] = grouped_data.apply(lambda row: f"{row['Hours']}", axis=1)
+    colors = ["#636EFA"] * len(grouped_data)
+    # project_hours = df.groupby('Project')['Hours'].sum().reset_index()
+    client_hours = df.groupby("Client_Name", as_index=False)["Hours"].sum()
     no_of_clients = df['Client_Name'].nunique()
     tot_available_hours = df['Available_Hours'].sum()
     total_no_of_hours = df['Hours'].sum()
@@ -25,8 +30,12 @@ def generate_timesheet_report(timesheet_path: str, output_html: str = "summary.h
             x=grouped_data['Month'], 
             y=grouped_data['Hours'], 
             marker_color=colors, 
-            textposition='outside', 
-            hovertemplate="<b>Month:</b> %{x}<br><b>Hours:</b> %{y}",
+            text=grouped_data["hours_label"],
+            textposition='inside', 
+            textangle=0,
+            # hovertemplate="<b>Month:</b> %{x}<br><b>Hours:</b> %{y}",
+            hovertemplate="<b>Month:</b> %{x}<br><b>Utilized Hours:</b> %{y}<br><b>Available Hours:</b> %{customdata}",
+            customdata=grouped_data["Available_Hours"], 
             name="",
             showlegend=False,
         ),
@@ -35,20 +44,22 @@ def generate_timesheet_report(timesheet_path: str, output_html: str = "summary.h
     
     fig.update_layout(
         xaxis_title="<b>Month</b>", 
-        yaxis_title="<b>Hours</b>",
+        yaxis_title="<b>Utilized Hours</b>",
         font = dict(
             family="Arial, sans-serif",
             size=12,
             color="black",
-        )
+        ),
+        bargap=0.1,
+        bargroupgap=0.1,
     )
 
     fig.add_trace(
         go.Pie(
-            labels=project_hours['Project'], 
-            values=project_hours['Hours'],  
+            labels=client_hours['Client_Name'], 
+            values=client_hours['Hours'],  
             textinfo='percent', 
-            hovertemplate="<b>Project:</b> %{label}<br><b>Total Hours:</b> %{value}<br><b>Percentage:</b> %{percent}",
+            hovertemplate="<b>Client:</b> %{label}<br><b>Total Hours:</b> %{value}<br><b>Percentage:</b> %{percent}",
             domain={'x': [0.65, 0.95]},
             name="",
             showlegend=True,
@@ -98,11 +109,11 @@ def generate_timesheet_report(timesheet_path: str, output_html: str = "summary.h
             }}
             
             .summary-box {{
-                background-color: lightgreen;
+                background-color: #84cbdb;
                 border-radius: 15px 0px 15px 0px;
                 font-weight: bold;
                 padding: 15px;
-                width: 10%; 
+                width: 15%; 
                 text-align: center;
                 box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
             }}
@@ -122,10 +133,11 @@ def generate_timesheet_report(timesheet_path: str, output_html: str = "summary.h
     </head>
     <body>
         <div class="container">
-            <h1>Timesheet Report</h1>
+            <h1 style="color: blue;">Timesheet Report</h1>
             <div class="summary-container">
                 <div class="summary-box">
                     <span class="billed-hours">Billed Hours : {total_no_of_hours}</span><br>
+                    <span class="utilization">Available Hours : {tot_available_hours}</span><br>
                     <span class="utilization">Utilization : {billed_percentage:.2f}%</span>
                 </div>
             
@@ -145,4 +157,4 @@ def generate_timesheet_report(timesheet_path: str, output_html: str = "summary.h
 
     print(f"Custom HTML report saved successfully as '{output_html}'")
 
-generate_timesheet_report('D:/timesheet_data2.csv', 'summary.html')
+generate_timesheet_report('D:/timesheet_data_week7.csv', 'summary.html')
